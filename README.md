@@ -22,4 +22,4 @@ You can use this in automations, like sending a notification when you enter the 
 ## Notes
 I did not create sensors for balance and reservations, as I did not want to poll the API every x minutes. Use the services to get the current state instead.
 
-This is something I threw together. The error will not be up to standard and the API may change anytime, so this component could stop working.
+This is something I threw together. The error handling will not be up to standard and the API may change anytime, so this component could stop working. However, if the service returns successfully, you can be sure the action was performed correctly.
