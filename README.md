@@ -5,10 +5,10 @@ If you have a "Bezoekersvergunning" you would like to use in Home Assistant, you
 It uses the API that this frontend interacts with: https://aanvraagparkeren.groningen.nl/DVSPortal
 
 It exposes 4 actions:
-- groningen_parking.get_balance: returns the balance left in minutes
-- groningen_parking.park: starts a parking action
-- groningen_parking.unpark: stops a parking action
-- groningen_parking.has_reservation: returns True/False, depending on if you have an active reservation
+- `groningen_parking.get_balance`: returns the balance left in minutes
+- `groningen_parking.park`: starts a parking action
+- `groningen_parking.unpark`: stops a parking action
+- `groningen_parking.has_reservation`: returns True/False, depending on if you have an active reservation
 
 You can use this in automations, like sending a notification when you enter the zone the Bezoekersvergunning is registered to, or sending a notification when you exited the zone but are still parked.
 
