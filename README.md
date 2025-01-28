@@ -13,7 +13,16 @@ It exposes 4 actions:
 You can use this in automations, like sending a notification when you enter the zone the Bezoekersvergunning is registered to, or sending a notification when you exited the zone but are still parked.
 
 ## How to use
-1. Copy all files in here to `custom_components/groningen-parking`.
+### HACS
+1. Add this repository as a custom repository
+2. Install Groningen Parking
+3. Add a new integration in `Settings -> Devices and Services`.
+4. Search for Groningen Parking
+5. Fill out the username, password (The credentials you use to login to the portal), and license plate
+
+
+### Manual installation
+1. Copy all files in `custom_components/groningen_parking` to your HASS installation.
 2. Restart HASS
 3. Add a new integration in `Settings -> Devices and Services`.
 4. Search for Groningen Parking

@@ -1,0 +1,7 @@
+{
+    "name": "Groningen Parking",
+    "render_readme": true,
+    "domains": ["groningen_parking"],
+    "iot_class": "cloud_push",
+    "homeassistant": "2023.8.0"
+}

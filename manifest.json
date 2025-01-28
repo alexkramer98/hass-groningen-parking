@@ -2,6 +2,8 @@
     "domain": "groningen_parking",
     "name": "Groningen Parking",
     "documentation": "https://github.com/alexkramer98/hass-groningen-parking",
+    "issue_tracker": "https://github.com/alexkramer98/issues",
+    "dependencies": [],
     "codeowners": ["@alexkramer98"],
     "version": "0.0.1",
     "requirements": ["requests>=2.32.3"],
