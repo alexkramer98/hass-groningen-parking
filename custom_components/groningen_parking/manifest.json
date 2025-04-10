@@ -5,7 +5,7 @@
     "issue_tracker": "https://github.com/alexkramer98/hass-groningen-parking/issues",
     "dependencies": [],
     "codeowners": ["@alexkramer98"],
-    "version": "0.0.1",
+    "version": "0.0.2",
     "requirements": ["requests>=2.32.3"],
     "config_flow": true
 }

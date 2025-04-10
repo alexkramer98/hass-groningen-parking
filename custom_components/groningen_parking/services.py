@@ -1,4 +1,6 @@
 """Services for the Groningen Parking component."""
+from zoneinfo import ZoneInfo
+
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
@@ -63,11 +65,14 @@ async def async_park(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry)
     token = response["Token"]
     encoded_token = base64.b64encode(token.encode('ascii')).decode('ascii')
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(ZoneInfo("Europe/Amsterdam"))
+
+    datetime_from = now.replace(second=0, microsecond=0).isoformat(sep='T', timespec='milliseconds')
+    datetime_till = now.replace(hour=23, minute=59, second=0, microsecond=0).isoformat(sep='T', timespec='milliseconds')
 
     await handle_api_call(hass, '/reservation/create', {
-        "DateFrom": f"{now.replace(second=0, microsecond=0).isoformat(sep='T', timespec='milliseconds')}+01:00",
-        "DateUntil": f"{now.replace(hour=23, minute=59, second=0, microsecond=0).isoformat(sep='T', timespec='milliseconds')}+01:00",
+        "DateFrom": datetime_from,
+        "DateUntil": datetime_till,
         "LicensePlate": {
             "Value": entry.data.get(CONF_LICENSE_PLATE),
         },
