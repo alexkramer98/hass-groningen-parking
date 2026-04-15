@@ -4,6 +4,9 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from .const import DOMAIN, CONF_LICENSE_PLATE, API_BASE
 import requests
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 class GroningenParkingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Groningen Parking."""
@@ -14,13 +17,16 @@ class GroningenParkingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
         if user_input is not None:
+            _LOGGER.debug("Config flow: validating credentials for username=%s", user_input[CONF_USERNAME])
             # Validate the input
             if await self._validate_credentials(
                     user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
             ):
+                _LOGGER.debug("Config flow: credentials valid, creating entry for %s", user_input[CONF_LICENSE_PLATE])
                 return self.async_create_entry(
                     title=user_input[CONF_LICENSE_PLATE], data=user_input
                 )
+            _LOGGER.error("Config flow: credential validation failed for username=%s", user_input[CONF_USERNAME])
             errors["base"] = "invalid_auth"
 
         return self.async_show_form(
@@ -48,10 +54,13 @@ class GroningenParkingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         def make_request():
             try:
                 response = requests.post(url, json=data)
+                _LOGGER.debug("Login response: status=%s body=%s", response.status_code, response.text)
                 response.raise_for_status()
-
-                return response.json().get("Token") is not None
-            except requests.RequestException:
+                has_token = response.json().get("Token") is not None
+                _LOGGER.debug("Login token present: %s", has_token)
+                return has_token
+            except requests.RequestException as ex:
+                _LOGGER.error("Login request failed: %s", ex)
                 return False
 
         return await self.hass.async_add_executor_job(make_request)
