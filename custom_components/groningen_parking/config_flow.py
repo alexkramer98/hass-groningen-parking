@@ -40,7 +40,7 @@ class GroningenParkingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         url = f"{API_BASE}/login"
         data = {
             "identifier": username,
-            "loginMethod": "Pas",
+            "loginMethod": 2,
             "permitMediaTypeID": 1,
             "password": password,
         }

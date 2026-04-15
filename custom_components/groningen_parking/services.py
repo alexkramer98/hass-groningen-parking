@@ -149,7 +149,7 @@ async def handle_api_call(hass: HomeAssistant, endpoint: str, data: dict, header
 async def login(hass: HomeAssistant, entry: ConfigEntry):
     return await handle_api_call(hass, "/login", {
         "identifier": entry.data[CONF_USERNAME],
-        "loginMethod": "Pas",
+        "loginMethod": 2,
         "permitMediaTypeID": 1,
         "password": entry.data[CONF_PASSWORD],
     })
