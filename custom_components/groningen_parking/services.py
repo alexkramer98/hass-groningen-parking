@@ -45,15 +45,28 @@ async def get_reservation(response, entry: ConfigEntry):
 async def async_get_balance(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the get_balance service."""
     response = await login(hass, entry)
+    _LOGGER.debug("get_balance login response: %s", response)
+
+    try:
+        balance = response["Permits"][0]["PermitMedias"][0]["Balance"]
+    except (KeyError, IndexError, TypeError) as ex:
+        _LOGGER.error("get_balance: unexpected response structure: %s — response was: %s", ex, response)
+        raise
 
     return {
-        "balance_minutes": response["Permits"][0]["PermitMedias"][0]["Balance"]
+        "balance_minutes": balance
     }
 
 async def async_has_reservation(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the has_reservation service."""
     response = await login(hass, entry)
-    has_reservation = await get_reservation(response, entry) is not None
+    _LOGGER.debug("has_reservation login response: %s", response)
+
+    try:
+        has_reservation = await get_reservation(response, entry) is not None
+    except (KeyError, IndexError, TypeError) as ex:
+        _LOGGER.error("has_reservation: unexpected response structure: %s — response was: %s", ex, response)
+        raise
 
     return {
         "has_reservation": has_reservation
@@ -88,7 +101,17 @@ async def async_park(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry)
 async def async_unpark(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the unpark service."""
     response = await login(hass, entry)
-    reservation_id = (await get_reservation(response, entry))["ReservationID"]
+    _LOGGER.debug("unpark login response: %s", response)
+
+    try:
+        reservation = await get_reservation(response, entry)
+        if reservation is None:
+            _LOGGER.error("unpark: no active reservation found for license plate %s", entry.data.get(CONF_LICENSE_PLATE))
+            raise ValueError("No active reservation found")
+        reservation_id = reservation["ReservationID"]
+    except (KeyError, IndexError, TypeError) as ex:
+        _LOGGER.error("unpark: unexpected response structure: %s — response was: %s", ex, response)
+        raise
     token = response["Token"]
     encoded_token = base64.b64encode(token.encode('ascii')).decode('ascii')
 
@@ -105,6 +128,7 @@ async def async_unpark(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntr
 def make_api_call(url: str, data: dict, headers: dict = None):
     """Make synchronous API call."""
     response = requests.post(url, json=data, headers=headers)
+    _LOGGER.debug("API response from %s: status=%s body=%s", url, response.status_code, response.text)
     response.raise_for_status()
     return response.json()
 
