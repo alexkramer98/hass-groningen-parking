@@ -128,6 +128,11 @@ async def async_unpark(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntr
 def make_api_call(url: str, data: dict, headers: dict = None):
     """Make synchronous API call."""
     response = requests.post(url, json=data, headers=headers)
+    _LOGGER.debug(
+        "Request: %s %s | headers=%s | body=%s",
+        response.request.method, response.request.url,
+        dict(response.request.headers), response.request.body,
+    )
     _LOGGER.debug("API response from %s: status=%s body=%s", url, response.status_code, response.text)
     response.raise_for_status()
     return response.json()
