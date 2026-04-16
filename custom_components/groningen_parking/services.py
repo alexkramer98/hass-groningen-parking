@@ -9,7 +9,6 @@ import logging
 import datetime
 from functools import partial
 from .const import DOMAIN, API_BASE, CONF_LICENSE_PLATE
-import base64
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ async def get_reservation(response, entry: ConfigEntry):
 
 async def async_get_balance(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the get_balance service."""
-    response = await login(hass, entry)
+    response, _, _ = await login(hass, entry)
     _LOGGER.debug("get_balance login response: %s", response)
 
     try:
@@ -59,7 +58,7 @@ async def async_get_balance(hass: HomeAssistant, call: ServiceCall, entry: Confi
 
 async def async_has_reservation(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the has_reservation service."""
-    response = await login(hass, entry)
+    response, _, _ = await login(hass, entry)
     _LOGGER.debug("has_reservation login response: %s", response)
 
     try:
@@ -74,25 +73,21 @@ async def async_has_reservation(hass: HomeAssistant, call: ServiceCall, entry: C
 
 async def async_park(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the park service."""
-    response = await login(hass, entry)
-    token = response["Token"]
-    encoded_token = base64.b64encode(token.encode('ascii')).decode('ascii')
+    response, session, xsrf_token = await login(hass, entry)
+    _LOGGER.debug("park login response: %s", response)
 
     now = datetime.datetime.now(ZoneInfo("Europe/Amsterdam"))
-
     datetime_from = now.replace(second=0, microsecond=0).isoformat(sep='T', timespec='milliseconds')
     datetime_till = now.replace(hour=23, minute=59, second=0, microsecond=0).isoformat(sep='T', timespec='milliseconds')
 
-    await handle_api_call(hass, '/reservation/create', {
+    await handle_api_call(hass, session, xsrf_token, 'reservation/create', {
         "DateFrom": datetime_from,
         "DateUntil": datetime_till,
         "LicensePlate": {
             "Value": entry.data.get(CONF_LICENSE_PLATE),
         },
         "permitMediaCode": entry.data.get(CONF_USERNAME),
-        "permitMediaTypeID": "1"
-    }, {
-        "Authorization": f"Token {encoded_token}"
+        "permitMediaTypeID": 1,
     })
 
     return {}
@@ -100,7 +95,7 @@ async def async_park(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry)
 
 async def async_unpark(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntry):
     """Handle the unpark service."""
-    response = await login(hass, entry)
+    response, session, xsrf_token = await login(hass, entry)
     _LOGGER.debug("unpark login response: %s", response)
 
     try:
@@ -112,22 +107,28 @@ async def async_unpark(hass: HomeAssistant, call: ServiceCall, entry: ConfigEntr
     except (KeyError, IndexError, TypeError) as ex:
         _LOGGER.error("unpark: unexpected response structure: %s — response was: %s", ex, response)
         raise
-    token = response["Token"]
-    encoded_token = base64.b64encode(token.encode('ascii')).decode('ascii')
 
-    await handle_api_call(hass, '/reservation/end', {
+    await handle_api_call(hass, session, xsrf_token, 'reservation/end', {
         "ReservationID": reservation_id,
         "permitMediaCode": entry.data.get(CONF_USERNAME),
-        "permitMediaTypeID": "1"
-    }, {
-        "Authorization": f"Token {encoded_token}"
+        "permitMediaTypeID": 1,
     })
 
     return {}
 
-def make_api_call(url: str, data: dict, headers: dict = None):
-    """Make synchronous API call."""
-    response = requests.post(url, json=data, headers=headers)
+def _do_login(url: str, data: dict):
+    """Perform login and return (response_json, session, xsrf_token)."""
+    session = requests.Session()
+    response = session.post(url, json=data)
+    _LOGGER.debug("Login response: status=%s body=%s", response.status_code, response.text)
+    response.raise_for_status()
+    xsrf_token = session.cookies.get('Xsrf-DVSPortal', '')
+    _LOGGER.debug("XSRF token from login cookies: %s", xsrf_token)
+    return response.json(), session, xsrf_token
+
+def _do_api_call(session: requests.Session, url: str, data: dict, xsrf_token: str):
+    """Make an authenticated API call using an existing session."""
+    response = session.post(url, json=data, headers={'x-xsrf-token': xsrf_token})
     _LOGGER.debug(
         "Request: %s %s | headers=%s | body=%s",
         response.request.method, response.request.url,
@@ -137,25 +138,27 @@ def make_api_call(url: str, data: dict, headers: dict = None):
     response.raise_for_status()
     return response.json()
 
-async def handle_api_call(hass: HomeAssistant, endpoint: str, data: dict, headers: dict = None):
-    """Handle the API call with error handling."""
+async def handle_api_call(hass: HomeAssistant, session: requests.Session, xsrf_token: str, endpoint: str, data: dict):
+    """Handle an authenticated API call with error handling."""
     url = f"{API_BASE}/{endpoint}"
-
     try:
-        # Run the requests call in an executor
-        func = partial(make_api_call, url, data, headers)
-        result = await hass.async_add_executor_job(func)
-        return result
-
+        func = partial(_do_api_call, session, url, data, xsrf_token)
+        return await hass.async_add_executor_job(func)
     except requests.exceptions.RequestException as ex:
         _LOGGER.error("API request for %s failed: %s", endpoint, str(ex))
         raise
 
 async def login(hass: HomeAssistant, entry: ConfigEntry):
-    return await handle_api_call(hass, "/login", {
+    """Login and return (response_json, session, xsrf_token)."""
+    url = f"{API_BASE}/login"
+    data = {
         "identifier": entry.data[CONF_USERNAME],
         "loginMethod": 2,
         "permitMediaTypeID": 1,
         "password": entry.data[CONF_PASSWORD],
-    })
-
+    }
+    try:
+        return await hass.async_add_executor_job(partial(_do_login, url, data))
+    except requests.exceptions.RequestException as ex:
+        _LOGGER.error("Login request failed: %s", ex)
+        raise

@@ -56,9 +56,10 @@ class GroningenParkingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 response = requests.post(url, json=data)
                 _LOGGER.debug("Login response: status=%s body=%s", response.status_code, response.text)
                 response.raise_for_status()
-                has_token = response.json().get("Token") is not None
-                _LOGGER.debug("Login token present: %s", has_token)
-                return has_token
+                body = response.json()
+                valid = body.get("Permits") is not None
+                _LOGGER.debug("Login valid (Permits present): %s", valid)
+                return valid
             except requests.RequestException as ex:
                 _LOGGER.error("Login request failed: %s", ex)
                 return False
